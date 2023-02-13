@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="0880eba6-946d-4a12-b448-b5746d95c02b" name="Default Changelist" comment="" />
+    <list default="true" id="0880eba6-946d-4a12-b448-b5746d95c02b" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/resources/js/shared/TicketSwiper.vue" beforeDir="false" afterPath="$PROJECT_DIR$/resources/js/shared/TicketSwiper.vue" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -169,7 +171,7 @@
       <workItem from="1674731813433" duration="1136000" />
       <workItem from="1676295152219" duration="1586000" />
       <workItem from="1676298509298" duration="331000" />
-      <workItem from="1676299155004" duration="83000" />
+      <workItem from="1676299155004" duration="742000" />
     </task>
     <servers />
   </component>
