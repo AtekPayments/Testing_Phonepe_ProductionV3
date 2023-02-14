@@ -1,10 +1,10 @@
-<?php
+<?php /** @noinspection LaravelFunctionsInspection */
+
 namespace App\Http\Controllers\Api\Settlement;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-
 use function env;
 
 class SettlementController extends Controller

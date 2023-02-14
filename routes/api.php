@@ -2,20 +2,11 @@
 
 use App\Http\Controllers\Api\MMOPL\FareController;
 use App\Http\Controllers\Api\Settlement\SettlementController;
-use App\Http\Controllers\Modules\Payment\CallbackController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\LogFile\LogController;
+use App\Http\Controllers\Callback\callbackController;
 use Illuminate\Support\Facades\Route;
-
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 Route::post('/get/fare', [FareController::class, 'getFare'])->name('fare');
 
@@ -28,9 +19,10 @@ Route::middleware(['basic_auth'])->group(function () {
     Route::post('set/settlement/refund', [SettlementController::class, 'setRefundUnsettledData'])->name('settlement.post.refund');
 });
 
-Route::post('/payment/s2s/{id}',[CallbackController::class,'paymentCallback']);
-Route::post('/set/status',[CallbackController::class,'SetStatus']);
+
+Route::post('/create/log/{id}',[LogController::class,'CreateLogFile']);
+
+Route::post('/payment/s2s/{id}',[LogController::class,'makeLog']);
 
 
-//Full Refund Api on Ticket generation Failed
-Route::post('/tkt/failed/refund',[CallbackController::class,'fullRefund']);
+//Route::post('/payment/status/{id}',[CallbackController::class,'PaymentCallback']);

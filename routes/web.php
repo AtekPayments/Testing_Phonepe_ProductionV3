@@ -1,16 +1,18 @@
 <?php
 
+use App\Http\Controllers\LogFile\LogController;
 use App\Http\Controllers\MainController;
 use App\Http\Controllers\Modules\GateRejection\GraController;
-use App\Http\Controllers\Modules\Order\OrderDetailsController;
+use App\Http\Controllers\Modules\OrderDetailsController;
+use App\Http\Controllers\Modules\OrderStatus\OrderStatusController;
 use App\Http\Controllers\Modules\Processing\ProcessingController;
 use App\Http\Controllers\Modules\Refund\RefundController;
 use App\Http\Controllers\Modules\StoreValue\StoreValueDashboardController;
 use App\Http\Controllers\Modules\StoreValue\StoreValueOrderController;
 use App\Http\Controllers\Modules\StoreValue\StoreValueReloadController;
 use App\Http\Controllers\Modules\StoreValue\StoreValueStatusController;
-use App\Http\Controllers\Modules\Ticket\TicketDashboardController;
-use App\Http\Controllers\Modules\Ticket\TicketOrderController;
+use App\Http\Controllers\Modules\Ticket\DashboardController;
+use App\Http\Controllers\Modules\Ticket\OrderController;
 use App\Http\Controllers\Modules\Ticket\TicketStatusController;
 use App\Http\Controllers\Modules\Ticket\TicketViewController;
 use App\Http\Controllers\Modules\TripPass\TripPassDashboardController;
@@ -18,8 +20,8 @@ use App\Http\Controllers\Modules\TripPass\TripPassOrderController;
 use App\Http\Controllers\Modules\TripPass\TripPassReloadController;
 use App\Http\Controllers\Modules\TripPass\TripPassStatusController;
 use App\Http\Controllers\ProductController;
-use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
 
 Route::get('/', [MainController::class, 'index'])->name('login');
 Route::post('auth', [MainController::class, 'auth'])->name('auth');
@@ -31,16 +33,18 @@ Route::middleware('auth')->group(function () {
 
     // PROCESSING TICKET
     Route::get('processing/{order_id}', [ProcessingController::class, 'index'])->name('processing');
+    Route::get('processing/init/{order_id}', [ProcessingController::class, 'getOrderDetails'])->name('processing.init');
+    Route::get('processing/failed/{order_id}', [ProcessingController::class, 'failed'])->name('processing.failed');
 
     // TICKET
-    Route::get('ticket/dashboard', [TicketDashboardController::class, 'index'])->name('ticket.dashboard');
-    Route::get('ticket/order', [TicketOrderController::class, 'index'])->name('ticket.index');
-    Route::get('ticket/order/{source}/{destination}', [TicketOrderController::class, 'indexRecent'])->name('ticket.recent');
+    Route::get('ticket/dashboard', [DashboardController::class, 'index'])->name('ticket.dashboard');
+    Route::get('ticket/order', [OrderController::class, 'index'])->name('ticket.index');
+    Route::get('ticket/order/{source}/{destination}', [OrderController::class, 'indexRecent'])->name('ticket.recent');
     Route::get('ticket/status', [TicketStatusController::class, 'index'])->name('ticket.status');
-    Route::post('ticket/create', [TicketOrderController::class, 'create'])->name('ticket.create');
-    Route::get('ticket/order/pending', [TicketOrderController::class, 'isPending'])->name('ticket.order.pending');
+    Route::post('ticket/create', [OrderController::class, 'create'])->name('ticket.create');
+    Route::get('ticket/order/pending', [OrderController::class, 'isPending'])->name('ticket.order.pending');
     Route::get('ticket/view/{order_id}', [TicketViewController::class, 'index'])->name('ticket.view');
-    Route::get('get/upcoming',[TicketDashboardController::class, 'getUpcomingOrders'])->name('ticket.upcoming');
+    Route::get('get/upcoming',[DashboardController::class, 'getUpcomingOrders'])->name('ticket.upcoming');
 
 
     // STORE VALUE
@@ -81,7 +85,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('order/{order_id}', [OrderDetailsController::class, 'index'])->name('details-order');
-Route::get('processing/init/{order_id}', [ProcessingController::class, 'getOrderDetails'])->name('processing.init');
+
+Route::get('/api/order/status',[OrderStatusController::class,'order_status']);
 
 
-/*Route::get('/api/order/status',[OrderStatusController::class,'order_status']);*/

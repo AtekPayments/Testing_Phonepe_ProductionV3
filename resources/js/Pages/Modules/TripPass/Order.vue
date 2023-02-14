@@ -203,7 +203,7 @@ export default {
                 confirmButtonText: 'Okay',
             }).then((res) => {
                 if (res.isConfirmed) {
-                    this.$inertia.replace("/products")
+                    this.$inertia.get("/products")
                 }
             })
         }

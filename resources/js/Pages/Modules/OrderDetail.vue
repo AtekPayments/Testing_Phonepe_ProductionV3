@@ -19,7 +19,7 @@
                             ORDER ID
                         </td>
                         <td class="py-4 px-6 text-sm text-gray-500 whitespace-nowrap">
-                            {{ order.sale_or_no }}
+                            {{ order.order_id }}
                         </td>
                     </tr>
 
@@ -70,21 +70,21 @@
                         </td>
                     </tr>
 
-                    <tr class="bg-white border-b" v-if="order.src_stn_id">
+                    <tr class="bg-white border-b" v-if="order.source_id">
                         <td class="py-4 px-6 text-sm font-medium text-gray-900 whitespace-nowrap">
                             SOURCE
                         </td>
                         <td class="py-4 px-6 text-sm text-gray-500 whitespace-nowrap">
-                            {{ order.src_stn_id }}
+                            {{ order.source_id }}
                         </td>
                     </tr>
 
-                    <tr class="bg-white border-b" v-if="order.des_stn_id">
+                    <tr class="bg-white border-b" v-if="order.destination_id">
                         <td class="py-4 px-6 text-sm font-medium text-gray-900 whitespace-nowrap">
                             DESTINATION
                         </td>
                         <td class="py-4 px-6 text-sm text-gray-500 whitespace-nowrap">
-                            {{ order.des_stn_id }}
+                            {{ order.destination_id }}
                         </td>
                     </tr>
 
@@ -94,15 +94,6 @@
                         </td>
                         <td class="py-4 px-6 text-sm text-gray-500 whitespace-nowrap">
                             {{ order.txn_date }}
-                        </td>
-                    </tr>
-
-                    <tr class="bg-white border-b">
-                        <td class="py-4 px-6 text-sm font-medium text-gray-900 whitespace-nowrap">
-                            ORDER STATUS
-                        </td>
-                        <td class="py-4 px-6 text-sm text-gray-500 whitespace-nowrap">
-                            {{ order.sale_or_status }}
                         </td>
                     </tr>
 

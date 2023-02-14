@@ -11,6 +11,7 @@ class PaymentController extends Controller
 {
     public function index($order_id)
     {
+
         return Inertia::render('Payment/Payment', [
             'order' => $order_id
         ]);

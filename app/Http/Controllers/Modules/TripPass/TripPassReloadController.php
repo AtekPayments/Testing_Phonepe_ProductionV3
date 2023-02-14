@@ -6,7 +6,6 @@ use App\Http\Controllers\Api\MMOPL\ApiController;
 use App\Http\Controllers\Api\PhonePe\PhonePePaymentController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Modules\Utility;
-use App\Http\Controllers\Modules\Utility\OrderUtility;
 use App\Models\SaleOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -47,10 +46,10 @@ class TripPassReloadController extends Controller
             ->where(function ($query) {
                 $query->where('so.sale_or_status', '=', env('ORDER_RELOADED'))
                     ->orWhere('so.sale_or_status', '=', env('ORDER_TICKET_GENERATED'));
+
             })
             ->where('so.sale_or_no', '=', $order_id)
             ->first();
-
 
         $api = new ApiController();
         $response = $api->reloadTripPassStatus($order);
@@ -71,7 +70,7 @@ class TripPassReloadController extends Controller
             ->where('sale_or_no', '=', $request->input('order_id'))
             ->first();
 
-        $SaleOrderNumber = OrderUtility::genSaleOrderNumber($old_order->pass_id);
+        $SaleOrderNumber = Utility::genSaleOrderNumber($old_order->pass_id);
         SaleOrder::reload(
             $old_order,
             $request->input('reloadAmount'),

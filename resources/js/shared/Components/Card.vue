@@ -37,7 +37,7 @@
                                 isSv ?
                                     (balance === 0 ? 'fetching ..' : '₹ ' + balance)
                                     :
-                                    (balance === 0 ? '0' : balance + ' Trips')
+                                    (balance === 0 ? 'fetching ..' : balance + ' Trips')
                             }}
                         </p>
                     </div>

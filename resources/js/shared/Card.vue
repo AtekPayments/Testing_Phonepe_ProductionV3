@@ -55,7 +55,7 @@
                         <div>
                             <p class="font-light text-xs text-white">Expiry</p>
                             <p class="tracking-wider text-sm font-bold text-white">
-                                {{ new Date(passDetails.ms_qr_exp).toLocaleDateString() + ' 01:10 AM' }}
+                                {{ new Date(passDetails.ms_qr_exp).toLocaleDateString() }}
                             </p>
                         </div>
                     </div>

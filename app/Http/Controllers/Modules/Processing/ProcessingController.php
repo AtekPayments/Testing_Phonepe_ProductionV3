@@ -5,13 +5,13 @@ namespace App\Http\Controllers\Modules\Processing;
 use App\Http\Controllers\Api\MMOPL\ApiController;
 use App\Http\Controllers\Api\PhonePe\PhonePeStatusController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Modules\Utility\OrderUtility;
 use App\Models\RjtSlBooking;
 use App\Models\SjtSlBooking;
 use App\Models\SvSlBooking;
 use App\Models\TpSlBooking;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class ProcessingController extends Controller
@@ -23,43 +23,64 @@ class ProcessingController extends Controller
         ]);
     }
 
-    public function init($order)
+    public function init($order_id)
     {
-        Log::info("CONTROLLER -> PROCESSING");
+        $order = DB::table('sale_order')
+            ->where('sale_or_no', '=', $order_id)
+            ->first();
 
-        if ($order->op_type_id == env('ISSUE')) {
-            if ($order->product_id == env('PRODUCT_SJT') || $order->product_id == env('PRODUCT_RJT')) {
-                $this->genTicket($order);
-            } else {
-                $this->genPass($order);
-            }
-        } elseif ($order->op_type_id == env('RELOAD')) {
-            $this->reloadPass($order);
-        } else {
-            $this->graTransaction($order);
+        $phonepe = new PhonePeStatusController();
+        $response = $phonepe->getPaymentStatus($order);
+
+
+        OrderUtility::updateOrderStatus($response, $order);
+
+        if ($response->success) {
+
+
+            return ($order->op_type_id == env('ISSUE')
+                ? ($order->product_id == env('PRODUCT_SJT') || $order->product_id == env('PRODUCT_RJT')
+                    ? $this->genTicket($order)
+                    : $this->genPass($order))
+                : ($order->op_type_id == env('RELOAD')
+                    ? $this->reloadPass($order)
+                    : $this->graTransaction($order)));
+
         }
+
+        return ErrorController::PhonePeError($response);
 
     }
 
-    private function genTicket($order): void
+    private function genTicket($order)
     {
+
         $api = new ApiController();
         $response = $api->genSjtRjtTicket($order);
 
-        if (is_null($response) || $response->status == "BSE") {
-            $this->updateOrderStatus($response, $order);
-        } else {
-            if ($order->product_id == env('PRODUCT_SJT')) {
-                foreach ($response->data->trips as $trip) {
-                    SjtSlBooking::store($response, $trip, $order);
-                }
-            } else {
-                foreach ($response->data->trips as $trip) {
-                    RjtSlBooking::store($response, $trip, $order);
-                }
+        if (is_null($response)) return ErrorController::NullResponseError();
+        if ($response->status == "BSE") return ErrorController::MmoplApiError($response);
+
+        //OrderUtility::updateSaleOrder($order, $response);
+      	 $utility = new OrderUtility();
+        $demo = $utility->updateSaleOrder($order, $response);
+
+        if ($order->product_id == env('PRODUCT_SJT')) {
+
+            foreach ($response->data->trips as $trip) {
+                SjtSlBooking::store($response, $trip, $order);
             }
-            $this->updateOrderStatus($response, $order);
+        } else {
+            foreach ($response->data->trips as $trip) {
+                RjtSlBooking::store($response, $trip, $order);
+            }
         }
+
+        return response([
+            'status' => true,
+            'product_id' => $order->product_id,
+            'op_type_id' => $order->op_type_id,
+        ]);
     }
 
     private function genPass($order)
@@ -70,7 +91,18 @@ class ProcessingController extends Controller
             ? $api->genStoreValuePass($order)
             : $api->genTripPass($order);
 
-        $this->updateOrderStatus($response, $order);
+        if ($response == null) return ErrorController::NullResponseError();
+        if ($response->status == "BSE") return ErrorController::MmoplApiError($response);
+
+        $utility = new OrderUtility();
+        $demo = $utility->updateSaleOrder($order, $response);
+
+        return response([
+            'status' => true,
+            'product_id' => $order->product_id,
+            'op_type_id' => $order->op_type_id,
+
+        ]);
 
     }
 
@@ -81,7 +113,22 @@ class ProcessingController extends Controller
             ? $api->reloadStoreValuePass($order)
             : $api->reloadTripPass($order);
 
-        $this->updateReloadOrderStatus($response, $order);
+        if ($response == null) return ErrorController::NullResponseError();
+        if ($response->status == "BSE") return ErrorController::MmoplApiError($response);
+
+        DB::table('sale_order')
+            ->where('sale_or_no', '=', $order->sale_or_no)
+            ->update([
+                'mm_ms_acc_id' => $response->data->transactionId,
+                'ms_qr_exp' => Carbon::createFromTimestamp($response->data->masterExpiry)->toDateTimeString(),
+                'sale_or_status' => env('ORDER_RELOADED')
+            ]);
+
+        return response([
+            'status' => true,
+            'op_type_id' => $order->op_type_id,
+            'product_id' => $order->product_id
+        ]);
 
     }
 
@@ -90,157 +137,55 @@ class ProcessingController extends Controller
         $api = new ApiController();
         $statusResponse = $api->graInfo($order->ref_sl_qr, $order->des_stn_id);
 
-        if (is_null($statusResponse) || $statusResponse->status == "BSE") {
-            $this->updateGRAOrderStatus($statusResponse, $order, true);
-        } else {
+        if ($statusResponse == null) return ErrorController::NullResponseError();
+        if ($statusResponse->status == "BSE") return ErrorController::MmoplApiError($statusResponse);
 
-            $response = $api->applyGra($statusResponse, $order);
+        $response = $api->applyGra($statusResponse, $order);
 
-            if (!is_null($response) && $response->status != "BSE") {
-
-                $old_order = DB::table('sale_order')
-                    ->where('ms_qr_no', '=', $order->ms_qr_no)
-                    ->first();
-
-                if ($order->product_id == env('PRODUCT_SJT')) SjtSlBooking::store($response, $response->data->trips[0], $old_order);
-                else if ($order->product_id == env('PRODUCT_RJT')) RjtSlBooking::store($response, $response->data->trips[0], $old_order);
-                else if ($order->product_id == env('PRODUCT_SV')) SvSlBooking::store($old_order, $response);
-                else TpSlBooking::store($old_order, $response);
-
-            }
-
-            $this->updateGRAOrderStatus($response, $order, false);
-        }
-    }
-
-    public function getOrderDetails($order_id)
-    {
-        $data = DB::table('sale_order')
-            ->where('sale_or_no', '=', $order_id)
-            ->orderBy('sale_or_id', 'desc')
-            ->first();
-
-
-
-        if($data->sale_or_status == env('ORDER_GENERATED')){
-            $api = new PhonePeStatusController();
-            $res = $api->getPaymentStatus($data);
-            if($res->code == "PAYMENT_SUCCESS"){
-                DB::table('sale_order')
-                    ->where('sale_or_no', '=', $order_id)
-                    ->update([
-                        'pg_txn_no' => $res->data->providerReferenceId,
-                    ]);
-
-                $this->init($data);
-            }
-        }
-
-        if($data->sale_or_status == env('ORDER_TICKET_GENERATION_FAILED')){
-            DB::table('sale_order')
-                ->where('sale_or_no','=',$order_id)
-                ->where('mm_ms_acc_id','!=', null)
-                ->update([
-                    'sale_or_status' => env('ORDER_TICKET_GENERATED')
-                ]);
-        }
-
-
-        $reData = DB::table('sale_order')
-            ->where('sale_or_no', '=', $order_id)
-            ->orderBy('sale_or_id', 'desc')
-            ->first();
+        if ($response == null) return ErrorController::NullResponseError();
+        if ($response->status == "BSE") return ErrorController::MmoplApiError($response);
 
         $old_order = DB::table('sale_order')
-            ->where('ms_qr_no', '=', $data->ms_qr_no)
+            ->where('ms_qr_no', '=', $order->ms_qr_no)
             ->first();
+
+        if ($order->product_id == env('PRODUCT_SJT')) SjtSlBooking::store($response, $response->data->trips[0], $old_order);
+        else if ($order->product_id == env('PRODUCT_RJT')) RjtSlBooking::store($response, $response->data->trips[0], $old_order);
+        else if ($order->product_id == env('PRODUCT_SV')) SvSlBooking::store($old_order, $response);
+        else TpSlBooking::store($old_order, $response);
+
+        DB::table('sale_order')
+            ->where('sale_or_no', '=', $order->sale_or_no)
+            ->update([
+                'mm_ms_acc_id' => $response->data->transactionId,
+                'ms_qr_exp' => Carbon::createFromTimestamp($response->data->masterExpiry)->toDateTimeString(),
+                'sale_or_status' => env('ORDER_GRA')
+
+            ]);
 
         return response([
             'status' => true,
-            'response' => $reData,
+            'op_type_id' => $order->op_type_id,
+            'product_id' => $order->product_id,
             'order_id' => $old_order->sale_or_no
         ]);
 
     }
 
-    public function updateOrderStatus($response, $order)
-    {
+    public function getOrderDetails($order_id){
+       $data = DB::table('sale_order')
+            ->where('sale_or_no','=',$order_id)
+           ->orderBy('sale_or_id','desc')
+            ->first();
+       $old_order = DB::table('sale_order')
+           ->where('ms_qr_no','=',$data->ms_qr_no)
+           ->first();
 
-        if ($response->status == "OK") {
-
-            DB::table('sale_order')
-                ->where('sale_or_no', '=', $order->sale_or_no)
-                ->update([
-                    'ms_qr_no' => $response->data->masterTxnId,
-                    'mm_ms_acc_id' => $response->data->transactionId,
-                    'ms_qr_exp' => Carbon::createFromTimestamp($response->data->masterExpiry)->toDateTimeString(),
-                    'sale_or_status' => env('ORDER_TICKET_GENERATED')
-                ]);
-
-        } else {
-
-            DB::table('sale_order')
-                ->where('sale_or_no', '=', $order->sale_or_no)
-                ->update([
-                    'sale_or_status' => env('ORDER_TICKET_GENERATION_FAILED')
-                ]);
-
-        }
+       return response([
+          'status'=>true,
+          'response' => $data,
+           'order_id' => $old_order->sale_or_no
+       ]);
 
     }
-
-    public function updateReloadOrderStatus($response, $order)
-    {
-
-        if ($response->status == "OK") {
-
-            DB::table('sale_order')
-                ->where('sale_or_no', '=', $order->sale_or_no)
-                ->update([
-                    'ms_qr_no' => $response->data->masterTxnId,
-                    'mm_ms_acc_id' => $response->data->transactionId,
-                    'ms_qr_exp' => Carbon::createFromTimestamp($response->data->masterExpiry)->toDateTimeString(),
-                    'sale_or_status' => env('ORDER_RELOADED')
-                ]);
-
-        } else {
-
-            DB::table('sale_order')
-                ->where('sale_or_no', '=', $order->sale_or_no)
-                ->update([
-                    'sale_or_status' => env('ORDER_RELOADED_FAIL')
-                ]);
-
-        }
-
-    }
-
-    public function updateGRAOrderStatus($response, $order, $isInfo)
-    {
-
-        if ($response->status == "OK") {
-
-            if (!$isInfo) {
-                DB::table('sale_order')
-                    ->where('sale_or_no', '=', $order->sale_or_no)
-                    ->update([
-                        'ms_qr_no' => $response->data->masterTxnId,
-                        'mm_ms_acc_id' => $response->data->transactionId,
-                        'ms_qr_exp' => Carbon::createFromTimestamp($response->data->masterExpiry)->toDateTimeString(),
-                        'sale_or_status' => env('ORDER_GRA')
-                    ]);
-            }
-
-        } else {
-
-            DB::table('sale_order')
-                ->where('sale_or_no', '=', $order->sale_or_no)
-                ->update([
-                    'sale_or_status' => env('ORDER_GRA_FAIL')
-                ]);
-
-        }
-
-    }
-
 }

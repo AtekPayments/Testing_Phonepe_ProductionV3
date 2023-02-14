@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection LaravelFunctionsInspection */
 
 namespace App\Http\Controllers\Modules\Ticket;
 
@@ -14,10 +14,8 @@ class TicketStatusController extends Controller
         $orders = DB::table('sale_order')
             ->where('pax_id', '=', Auth::id())
             ->where('op_type_id', '=', env('ISSUE'))
-            ->where(function($query) {
-                $query->where('product_id', '=', env('PRODUCT_SJT'))
-                    ->orWhere('product_id', '=', env('PRODUCT_RJT'));
-            })
+            ->where('product_id', '=', env('PRODUCT_SJT'))
+            ->orWhere('product_id', '=', env('PRODUCT_RJT'))
             ->where('sale_or_status', '=', env('ORDER_TICKET_GENERATED'))
             ->get();
 

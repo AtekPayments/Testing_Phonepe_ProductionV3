@@ -15,7 +15,7 @@ class TripPassStatusController extends Controller
             ->where('so.product_id', '=', env('PRODUCT_TP'))
             ->where('so.op_type_id', '=', env('ISSUE'))
             ->where('so.ms_qr_no', '=', $master_id)
-            ->orderBy('sale_or_id','desc')
+            ->where('so.sale_or_status', '=', env('ORDER_TICKET_GENERATED'))
             ->first();
 
         if (is_null($pass)) return response([
@@ -65,7 +65,8 @@ class TripPassStatusController extends Controller
 
             if (count($response->data->trips) > 0) {
 
-                DB::table('tp_sl_booking')               
+                DB::table('tp_sl_booking')
+                    ->where('mm_ms_acc_id', '=', $pass->mm_ms_acc_id)
                     ->where('sl_qr_no', '=', $response->data->trips[0]->qrCodeId)
                     ->update([
                         'qr_status' => env($response->data->trips[0]->tokenStatus),

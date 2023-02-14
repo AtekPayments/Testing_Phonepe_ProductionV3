@@ -44,7 +44,6 @@ import NavBar from "../Shared/NavBar";
 import Button from "../Shared/Component/Button";
 import Footer from "../Shared/Footer";
 import axios from "axios";
-
 export default {
 
     props: {
@@ -69,7 +68,7 @@ export default {
     },
 
     mounted() {
-       /* this.orderStatus();*/
+        this.orderStatus();
     },
 
     methods : {
